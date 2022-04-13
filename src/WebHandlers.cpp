@@ -18,6 +18,7 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+
 #include "ESPAsyncWebServer.h"
 #include "WebHandlerImpl.h"
 
@@ -42,52 +43,62 @@ AsyncStaticWebHandler::AsyncStaticWebHandler(const char* uri, FS& fs, const char
   _gzipStats = 0xF8;
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setIsDir(bool isDir){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setIsDir(bool isDir)
+{
   _isDir = isDir;
   return *this;
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setDefaultFile(const char* filename){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setDefaultFile(const char* filename)
+{
   _default_file = String(filename);
   return *this;
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setCacheControl(const char* cache_control){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setCacheControl(const char* cache_control)
+{
   _cache_control = String(cache_control);
   return *this;
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(const char* last_modified){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(const char* last_modified)
+{
   _last_modified = String(last_modified);
   return *this;
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(struct tm* last_modified){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(struct tm* last_modified)
+{
   char result[30];
   strftime (result,30,"%a, %d %b %Y %H:%M:%S %Z", last_modified);
   return setLastModified((const char *)result);
 }
 
 #ifdef ESP8266
-AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(time_t last_modified){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(time_t last_modified)
+{
   return setLastModified((struct tm *)gmtime(&last_modified));
 }
 
-AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified(){
+AsyncStaticWebHandler& AsyncStaticWebHandler::setLastModified()
+{
   time_t last_modified;
   if(time(&last_modified) == 0) //time is not yet set
     return *this;
   return setLastModified(last_modified);
 }
 #endif
-bool AsyncStaticWebHandler::canHandle(AsyncWebServerRequest *request){
-  if(request->method() != HTTP_GET 
-    || !request->url().startsWith(_uri) 
-    || !request->isExpectedRequestedConnType(RCT_DEFAULT, RCT_HTTP)
-  ){
+bool AsyncStaticWebHandler::canHandle(AsyncWebServerRequest *request)
+{
+  if(request->method() != HTTP_GET
+      || !request->url().startsWith(_uri)
+      || !request->isExpectedRequestedConnType(RCT_DEFAULT, RCT_HTTP)
+    )
+  {
     return false;
   }
-  if (_getFile(request)) {
+  if (_getFile(request))
+  {
     // We interested in "If-Modified-Since" header to check if file was modified
     if (_last_modified.length())
       request->addInterestingHeader("If-Modified-Since");
@@ -141,17 +152,22 @@ bool AsyncStaticWebHandler::_fileExists(AsyncWebServerRequest *request, const St
 
   String gzip = path + ".gz";
 
-  if (_gzipFirst) {
+  if (_gzipFirst)
+  {
     request->_tempFile = _fs.open(gzip, "r");
     gzipFound = FILE_IS_REAL(request->_tempFile);
-    if (!gzipFound){
+    if (!gzipFound)
+    {
       request->_tempFile = _fs.open(path, "r");
       fileFound = FILE_IS_REAL(request->_tempFile);
     }
-  } else {
+  }
+  else
+  {
     request->_tempFile = _fs.open(path, "r");
     fileFound = FILE_IS_REAL(request->_tempFile);
-    if (!fileFound){
+    if (!fileFound)
+    {
       request->_tempFile = _fs.open(gzip, "r");
       gzipFound = FILE_IS_REAL(request->_tempFile);
     }
@@ -159,7 +175,8 @@ bool AsyncStaticWebHandler::_fileExists(AsyncWebServerRequest *request, const St
 
   bool found = fileFound || gzipFound;
 
-  if (found) {
+  if (found)
+  {
     // Extract the file name from the path and keep it in _tempObject
     size_t pathLen = path.length();
     char * _tempPath = (char*)malloc(pathLen+1);
@@ -191,30 +208,39 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request)
   free(request->_tempObject);
   request->_tempObject = NULL;
   if((_username != "" && _password != "") && !request->authenticate(_username.c_str(), _password.c_str()))
-      return request->requestAuthentication();
+    return request->requestAuthentication();
 
-  if (request->_tempFile == true) {
+  if (request->_tempFile == true)
+  {
     String etag = String(request->_tempFile.size());
-    if (_last_modified.length() && _last_modified == request->header("If-Modified-Since")) {
+    if (_last_modified.length() && _last_modified == request->header("If-Modified-Since"))
+    {
       request->_tempFile.close();
       request->send(304); // Not modified
-    } else if (_cache_control.length() && request->hasHeader("If-None-Match") && request->header("If-None-Match").equals(etag)) {
+    }
+    else if (_cache_control.length() && request->hasHeader("If-None-Match") && request->header("If-None-Match").equals(etag))
+    {
       request->_tempFile.close();
       AsyncWebServerResponse * response = new AsyncBasicResponse(304); // Not modified
       response->addHeader("Cache-Control", _cache_control);
       response->addHeader("ETag", etag);
       request->send(response);
-    } else {
+    }
+    else
+    {
       AsyncWebServerResponse * response = new AsyncFileResponse(request->_tempFile, filename, String(), false, _callback);
       if (_last_modified.length())
         response->addHeader("Last-Modified", _last_modified);
-      if (_cache_control.length()){
+      if (_cache_control.length())
+      {
         response->addHeader("Cache-Control", _cache_control);
         response->addHeader("ETag", etag);
       }
       request->send(response);
     }
-  } else {
+  }
+  else
+  {
     request->send(404);
   }
 }
